@@ -3,8 +3,29 @@
 # Module for personal text lookup by alias
 # Provides quick access to stored information via clipboard
 
+# Configuration file location
+$Script:ConfigPath = Join-Path -Path $HOME -ChildPath "Documents\PersonalLookup_config.json"
+
 # Default database file location
 $Script:DbPath = Join-Path -Path $HOME -ChildPath "Documents\db.txt"
+
+# Load custom path from configuration if it exists
+if (Test-Path -Path $Script:ConfigPath) {
+    try {
+        $config = Get-Content -Path $Script:ConfigPath -Raw | ConvertFrom-Json
+        if ($config.DbPath -and (Test-Path -Path $config.DbPath)) {
+            $Script:DbPath = $config.DbPath
+            # Using Write-Host instead of Write-Verbose to ensure visibility
+            Write-Host "PersonalLookup: Using custom database path: $Script:DbPath" -ForegroundColor Cyan
+        }
+    }
+    catch {
+        Write-Warning "Could not read configuration file. Using default database path."
+    }
+}
+else {
+    Write-Host "PersonalLookup: Using default database path: $Script:DbPath" -ForegroundColor Gray
+}
 
 function Get-Lookup {
     <#
@@ -67,7 +88,8 @@ function Get-Lookup {
         if (-not $Show) {
             Write-Output "Value for '$Key' copied to clipboard."
         }
-    } else {
+    }
+    else {
         Write-Error "Key '$Key' not found in the database."
     }
 }
@@ -118,7 +140,8 @@ function Set-Lookup {
             # Replace existing key
             $newContent += "$Key=$Value"
             $keyExists = $true
-        } else {
+        }
+        else {
             # Keep existing line
             $newContent += $line
         }
@@ -172,7 +195,8 @@ function Remove-Lookup {
         if ($line -match "^$Key=") {
             $keyExists = $true
             # Skip this line to remove it
-        } else {
+        }
+        else {
             # Keep existing line
             $newContent += $line
         }
@@ -232,12 +256,13 @@ function Show-AllLookups {
         foreach ($line in $content) {
             if ($line -match "^(.+?)=(.*)$") {
                 [PSCustomObject]@{
-                    Key = $Matches[1]
+                    Key   = $Matches[1]
                     Value = $Matches[2]
                 }
             }
         }
-    } else {
+    }
+    else {
         # Show only keys
         foreach ($line in $content) {
             if ($line -match "^(.+?)=") {
@@ -282,7 +307,8 @@ function Import-LookupData {
     $existingContent = @()
     if (Test-Path -Path $Script:DbPath) {
         $existingContent = Get-Content -Path $Script:DbPath
-    } else {
+    }
+    else {
         New-Item -Path $Script:DbPath -ItemType File -Force | Out-Null
     }
     
@@ -306,16 +332,19 @@ function Import-LookupData {
                         $existingContent = $existingContent | ForEach-Object {
                             if ($_ -match "^$key=") {
                                 "$key=$value"
-                            } else {
+                            }
+                            else {
                                 $_
                             }
                         }
                         $replacedCount++
                     }
-                } else {
+                }
+                else {
                     $skippedCount++
                 }
-            } else {
+            }
+            else {
                 # Add new key
                 $existingContent += "$key=$value"
                 $addedCount++
@@ -335,6 +364,7 @@ function Set-LookupDbPath {
         Sets the path to the lookup database file
     .DESCRIPTION
         Changes the location of the database file used by all lookup commands
+        and saves this configuration for future PowerShell sessions
     .PARAMETER Path
         New path for the database file
     .EXAMPLE
@@ -353,11 +383,49 @@ function Set-LookupDbPath {
     if (-not (Test-Path -Path $Script:DbPath)) {
         New-Item -Path $Script:DbPath -ItemType File -Force | Out-Null
         Write-Output "Created new database file at $Script:DbPath"
-    } else {
+    }
+    else {
         Write-Output "Database path set to $Script:DbPath"
+    }
+    
+    # Save the path to the configuration file for persistence across sessions
+    $config = @{
+        DbPath = $Script:DbPath
+    }
+    
+    $config | ConvertTo-Json | Set-Content -Path $Script:ConfigPath -Force
+    Write-Output "Path saved to configuration and will persist across PowerShell sessions."
+}
+
+function Get-LookupDbPath {
+    <#
+    .SYNOPSIS
+        Gets the current path to the lookup database file
+    .DESCRIPTION
+        Returns the current database file path being used by the module
+    .EXAMPLE
+        Get-LookupDbPath
+    #>
+    [CmdletBinding()]
+    param()
+    
+    Write-Output "Current database path: $Script:DbPath"
+    
+    if (Test-Path -Path $Script:DbPath) {
+        Write-Output "Database file exists."
+    }
+    else {
+        Write-Output "Warning: Database file does not exist at this location!"
+    }
+    
+    if (Test-Path -Path $Script:ConfigPath) {
+        Write-Output "Configuration file exists at: $Script:ConfigPath"
+    }
+    else {
+        Write-Output "Configuration file does not exist yet."
     }
 }
 
 # Export module members
 Export-ModuleMember -Function Get-Lookup, Set-Lookup, Remove-Lookup, Show-AllLookups, 
-                             Import-LookupData, Set-LookupDbPath -Alias dbget, dbset, dbremove, dbshow
+Import-LookupData, Set-LookupDbPath, Get-LookupDbPath -Alias dbget, dbset, dbremove, dbshow
