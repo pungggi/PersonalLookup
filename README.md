@@ -16,6 +16,7 @@ This module was created as a PowerShell replacement for the "Need" plugin for [W
 - **Automatic encryption of stored values using Windows DPAPI**
 - Plain text storage format with encrypted values
 - **Launch associated applications automatically with shortcuts**
+- **Auto-clearing clipboard security (clears sensitive data after 70 seconds)**
 
 ## Commands
 
@@ -24,7 +25,7 @@ This module was created as a PowerShell replacement for the "Need" plugin for [W
 All-in-one command to retrieve or set values based on the parameters provided.
 
 ```powershell
-# Retrieve a value (silently copy to clipboard)
+# Retrieve a value (silently copy to clipboard, auto-clears after 70 seconds)
 Need iban
 
 # Set or update a value
@@ -38,6 +39,9 @@ Need iban -Show
 
 # Show value without copying to clipboard
 Need iban -NoCopy -Show
+
+# Prevent automatic clipboard clearing
+Need iban -NoAutoClipboardClear
 ```
 
 ### Get-Lookup (alias: dbget)
@@ -45,7 +49,7 @@ Need iban -NoCopy -Show
 Retrieves a value by key and copies it to clipboard.
 
 ```powershell
-# Silently copy value to clipboard
+# Silently copy value to clipboard (auto-clears after 70 seconds)
 Get-Lookup iban
 
 # Show value and copy to clipboard
@@ -53,6 +57,9 @@ dbget iban -Show
 
 # Show value without copying to clipboard
 dbget iban -NoCopy -Show
+
+# Prevent automatic clipboard clearing
+dbget iban -NoAutoClipboardClear
 ```
 
 ### Set-Lookup (alias: dbset)

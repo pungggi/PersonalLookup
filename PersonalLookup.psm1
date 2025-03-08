@@ -133,12 +133,14 @@ function Get-Lookup {
         If specified, doesn't copy to clipboard, just displays the value
     .PARAMETER Show
         If specified, displays the value instead of just copying silently
+    .PARAMETER NoAutoClipboardClear
+        If specified, doesn't automatically clear clipboard after 70 seconds
     .EXAMPLE
         Get-Lookup iban
-        # Silently copies IBAN to clipboard
+        # Silently copies IBAN to clipboard, clears after 70 seconds
     .EXAMPLE
-        dbget iban -Show
-        # Shows the IBAN and copies it to clipboard
+        dbget iban -Show -NoAutoClipboardClear
+        # Shows the IBAN, copies it to clipboard, and doesn't auto-clear
     #>
     [CmdletBinding()]
     [Alias("dbget")]
@@ -150,7 +152,10 @@ function Get-Lookup {
         [switch]$NoCopy,
         
         [Parameter()]
-        [switch]$Show
+        [switch]$Show,
+        
+        [Parameter()]
+        [switch]$NoAutoClipboardClear
     )
     
     # Ensure database file exists
@@ -177,6 +182,19 @@ function Get-Lookup {
             # Copy to clipboard if not prohibited
             if (-not $NoCopy) {
                 Set-Clipboard -Value $value
+                
+                # Setup auto-clearing of clipboard after 70 seconds
+                if (-not $NoAutoClipboardClear) {
+                    Start-Job -ScriptBlock {
+                        # Wait for 70 seconds
+                        Start-Sleep -Seconds 70
+                        
+                        # Clear the clipboard
+                        Set-Clipboard -Value ""
+                    } | Out-Null
+                    
+                    Write-Verbose "Clipboard will be cleared after 70 seconds"
+                }
             }
             
             # Show value if requested
@@ -185,7 +203,12 @@ function Get-Lookup {
             }
             
             if (-not $Show) {
-                Write-Output "Value for '$Key' copied to clipboard."
+                if (-not $NoAutoClipboardClear -and -not $NoCopy) {
+                    Write-Output "Value for '$Key' copied to clipboard. Will be cleared in 70 seconds."
+                }
+                else {
+                    Write-Output "Value for '$Key' copied to clipboard."
+                }
             }
             
             # Run shortcut if it exists
@@ -209,6 +232,19 @@ function Get-Lookup {
             # Copy to clipboard if not prohibited
             if (-not $NoCopy) {
                 Set-Clipboard -Value $value
+                
+                # Setup auto-clearing of clipboard after 70 seconds
+                if (-not $NoAutoClipboardClear) {
+                    Start-Job -ScriptBlock {
+                        # Wait for 70 seconds
+                        Start-Sleep -Seconds 70
+                        
+                        # Clear the clipboard
+                        Set-Clipboard -Value ""
+                    } | Out-Null
+                    
+                    Write-Verbose "Clipboard will be cleared after 70 seconds"
+                }
             }
             
             # Show value if requested
@@ -217,7 +253,12 @@ function Get-Lookup {
             }
             
             if (-not $Show) {
-                Write-Output "Value for '$Key' copied to clipboard."
+                if (-not $NoAutoClipboardClear -and -not $NoCopy) {
+                    Write-Output "Value for '$Key' copied to clipboard. Will be cleared in 70 seconds."
+                }
+                else {
+                    Write-Output "Value for '$Key' copied to clipboard."
+                }
             }
         }
     }
@@ -685,6 +726,8 @@ function Get-Need {
         If specified, doesn't copy to clipboard when retrieving
     .PARAMETER Show
         If specified, displays the value when retrieving
+    .PARAMETER NoAutoClipboardClear
+        If specified, doesn't automatically clear clipboard after 70 seconds
     .EXAMPLE
         Need iban
         # Retrieves IBAN value and copies to clipboard
@@ -695,8 +738,8 @@ function Get-Need {
         Need iban "CH132154646" "C:\path\to\bank.exe"
         # Sets the IBAN value with a shortcut to the banking app
     .EXAMPLE
-        Need iban -Show
-        # Shows the IBAN and copies it to clipboard
+        Need iban -Show -NoAutoClipboardClear
+        # Shows the IBAN and copies it to clipboard without auto-clearing
     #>
     [CmdletBinding(DefaultParameterSetName = 'Get')]
     [Alias("Need")]
@@ -714,7 +757,10 @@ function Get-Need {
         [switch]$NoCopy,
         
         [Parameter(ParameterSetName = 'Get')]
-        [switch]$Show
+        [switch]$Show,
+        
+        [Parameter(ParameterSetName = 'Get')]
+        [switch]$NoAutoClipboardClear
     )
     
     # If Value is provided, we're setting a key-value pair
@@ -778,7 +824,7 @@ function Get-Need {
     else {
         # We're retrieving a value (Get parameter set)
         # Use the existing Get-Lookup function
-        Get-Lookup -Key $Key -NoCopy:$NoCopy -Show:$Show
+        Get-Lookup -Key $Key -NoCopy:$NoCopy -Show:$Show -NoAutoClipboardClear:$NoAutoClipboardClear
     }
 }
 
