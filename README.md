@@ -7,17 +7,8 @@ A PowerShell module for quickly storing, retrieving, and managing personal text 
 - Store text snippets with easy-to-remember keys
 - Retrieve text directly to clipboard
 - Simple command-line interface with short aliases
-- Plain text storage format
-
-## Installation
-
-````
-
-To verify installation:
-
-```powershell
-Get-Module -ListAvailable PersonalLookup
-````
+- **Automatic encryption of stored values using Windows DPAPI**
+- Plain text storage format with encrypted values
 
 ## Commands
 
@@ -124,3 +115,7 @@ phone=555-123-4567
 - Use short, memorable keys for frequently accessed items
 - For sensitive information, consider changing the database path to a more secure location
 - Create a PowerShell profile entry to set your preferred database path at startup
+
+```
+
+```
