@@ -99,7 +99,7 @@ Export-LookupData -Path "C:\temp\mylookup_export.txt" -AsPlainText
 Changes the location of the database file.
 
 ```powershell
-Set-LookupDbPath -Path "C:\Users\Jay\OneDrive\secure\database.txt"
+Set-LookupDbPath -Path "C:\Users\Jay\OneDrive\secure\db.txt"
 ```
 
 ### Get-LookupDbPath
