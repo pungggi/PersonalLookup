@@ -342,7 +342,7 @@ function Set-Lookup {
             $newContent += "$Key=$encryptedValue"
         }
     }
-    
+
     # Write back to file
     Set-Content -Path $Script:DbPath -Value $newContent
     
@@ -351,6 +351,15 @@ function Set-Lookup {
     }
     else {
         Write-Output "Key '$Key' has been set successfully."
+    }
+
+    # Clear the last command from history to avoid storing sensitive information
+    Clear-History -Count 1
+
+    # Ask if user wants to add another entry
+    $addAnother = Read-Host "Add another entry? (y/N): "
+    if ($addAnother.ToLower() -ne 'y') {
+        exit
     }
 }
 
@@ -819,6 +828,16 @@ function Get-Need {
         }
         else {
             Write-Output "Key '$Key' has been set successfully."
+        }
+
+        
+        # Clear the last command from history to avoid storing sensitive information
+        Clear-History -Count 1
+
+        # Ask if user wants to add another entry
+        $addAnother = Read-Host "Add another entry? (y/N): "
+        if ($addAnother.ToLower() -ne 'y') {
+            exit
         }
     }
     else {
