@@ -534,6 +534,131 @@ function Get-LookupDbPath {
     }
 }
 
+function Get-Need {
+    <#
+    .SYNOPSIS
+        Retrieves or sets a lookup value
+    .DESCRIPTION
+        Dual-purpose function that either retrieves a value by key, or sets a value 
+        if both key and value parameters are provided
+    .PARAMETER Key
+        The key to look up or set
+    .PARAMETER Value
+        If provided, sets this value for the specified key
+    .PARAMETER NoCopy
+        If specified, doesn't copy to clipboard when retrieving
+    .PARAMETER Show
+        If specified, displays the value when retrieving
+    .EXAMPLE
+        Need iban
+        # Retrieves IBAN value and copies to clipboard
+    .EXAMPLE
+        Need iban "CH132154646" 
+        # Sets the IBAN value
+    .EXAMPLE
+        Need iban -Show
+        # Shows the IBAN and copies it to clipboard
+    #>
+    [CmdletBinding(DefaultParameterSetName = 'Get')]
+    [Alias("Need")]
+    param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Key,
+        
+        [Parameter(Mandatory = $false, Position = 1, ParameterSetName = 'Set')]
+        [string]$Value,
+        
+        [Parameter(ParameterSetName = 'Get')]
+        [switch]$NoCopy,
+        
+        [Parameter(ParameterSetName = 'Get')]
+        [switch]$Show
+    )
+    
+    # If Value is provided, we're setting a key-value pair
+    if ($PSCmdlet.ParameterSetName -eq 'Set') {
+        # Create the file if it doesn't exist
+        if (-not (Test-Path -Path $Script:DbPath)) {
+            New-Item -Path $Script:DbPath -ItemType File -Force | Out-Null
+            Write-Verbose "Created new database file at $Script:DbPath"
+        }
+        
+        # Read existing content
+        $content = @()
+        if (Test-Path -Path $Script:DbPath) {
+            $content = Get-Content -Path $Script:DbPath
+        }
+        
+        # Encrypt the value before storing
+        $encryptedValue = Protect-Value -Value $Value
+        
+        # Check if key already exists
+        $keyExists = $false
+        $newContent = @()
+        
+        foreach ($line in $content) {
+            if ($line -match "^$Key=") {
+                # Replace existing key
+                $newContent += "$Key=$encryptedValue"
+                $keyExists = $true
+            }
+            else {
+                # Keep existing line
+                $newContent += $line
+            }
+        }
+        
+        # Add new key if it doesn't exist
+        if (-not $keyExists) {
+            $newContent += "$Key=$encryptedValue"
+        }
+        
+        # Write back to file
+        Set-Content -Path $Script:DbPath -Value $newContent
+        
+        Write-Output "Key '$Key' has been set successfully."
+    }
+    else {
+        # We're retrieving a value (Get parameter set)
+        # Ensure database file exists
+        if (-not (Test-Path -Path $Script:DbPath)) {
+            Write-Error "Database file not found at $Script:DbPath"
+            return
+        }
+        
+        # Read all lines from the file
+        $content = Get-Content -Path $Script:DbPath
+        
+        # Find the line with the key
+        $line = $content | Where-Object { $_ -match "^$Key=" }
+        
+        if ($line) {
+            # Extract value (everything after the first =)
+            $encryptedValue = $line -replace "^$Key=", ""
+            
+            # Decrypt the value
+            $value = Unprotect-Value -EncryptedValue $encryptedValue
+            
+            # Copy to clipboard if not prohibited
+            if (-not $NoCopy) {
+                Set-Clipboard -Value $value
+            }
+            
+            # Show value if requested
+            if ($Show) {
+                Write-Output "$value"
+            }
+            
+            if (-not $Show) {
+                Write-Output "Value for '$Key' copied to clipboard."
+            }
+        }
+        else {
+            Write-Error "Key '$Key' not found in the database."
+        }
+    }
+}
+
 # Export module members
 Export-ModuleMember -Function Get-Lookup, Set-Lookup, Remove-Lookup, Show-AllLookups, 
-Import-LookupData, Set-LookupDbPath, Get-LookupDbPath -Alias dbget, dbset, dbremove, dbshow
+Import-LookupData, Set-LookupDbPath, Get-LookupDbPath, Get-Need -Alias dbget, dbset, dbremove, dbshow, Need

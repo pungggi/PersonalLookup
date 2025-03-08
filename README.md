@@ -2,6 +2,12 @@
 
 A PowerShell module for quickly storing, retrieving, and managing personal text snippets via a simple key-value database. Perfect for frequently accessed information like account numbers, IDs, or any text you need to access quickly.
 
+## Background
+
+This module was created as a PowerShell replacement for the "Need" plugin for [Wox](http://www.wox.one/) launcher, providing similar functionality directly within PowerShell. It gives you the same convenient ability to store and retrieve text snippets but with added security through encryption and deeper integration with PowerShell.
+
+**Credits**: Inspired by the original Wox "Need" plugin (http://www.wox.one/plugin/87) by Shinao.
+
 ## Features
 
 - Store text snippets with easy-to-remember keys
@@ -11,6 +17,24 @@ A PowerShell module for quickly storing, retrieving, and managing personal text 
 - Plain text storage format with encrypted values
 
 ## Commands
+
+### Get-Need (alias: Need)
+
+All-in-one command to retrieve or set values based on the parameters provided.
+
+```powershell
+# Retrieve a value (silently copy to clipboard)
+Need iban
+
+# Set or update a value
+Need iban "CH132154646"
+
+# Show value when retrieving and copy to clipboard
+Need iban -Show
+
+# Show value without copying to clipboard
+Need iban -NoCopy -Show
+```
 
 ### Get-Lookup (alias: dbget)
 
