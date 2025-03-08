@@ -15,6 +15,7 @@ This module was created as a PowerShell replacement for the "Need" plugin for [W
 - Simple command-line interface with short aliases
 - **Automatic encryption of stored values using Windows DPAPI**
 - Plain text storage format with encrypted values
+- **Launch associated applications automatically with shortcuts**
 
 ## Commands
 
@@ -28,6 +29,9 @@ Need iban
 
 # Set or update a value
 Need iban "CH132154646"
+
+# Set a value with shortcut (will launch the app after copying to clipboard)
+Need iban "CH132154646" "C:\Program Files\BankApp\bank.exe"
 
 # Show value when retrieving and copy to clipboard
 Need iban -Show
@@ -59,6 +63,9 @@ Adds or updates a key-value pair.
 # Store or update a key-value pair
 Set-Lookup -Key "address" -Value "123 Main Street"
 dbset phone "555-123-4567"
+
+# Store value with a shortcut to launch after copying
+dbset bankaccount "123456789" "C:\Program Files\Banking\app.exe"
 ```
 
 ### Remove-Lookup (alias: dbremove)
@@ -80,6 +87,9 @@ Show-AllLookups
 
 # Show keys and values
 dbshow -IncludeValues
+
+# Show keys, values, and shortcuts
+dbshow -IncludeValues -IncludeShortcuts
 ```
 
 ### Export-LookupData

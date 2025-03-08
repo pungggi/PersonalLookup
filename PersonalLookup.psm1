@@ -166,24 +166,59 @@ function Get-Lookup {
     $line = $content | Where-Object { $_ -match "^$Key=" }
     
     if ($line) {
-        # Extract value (everything after the first =)
-        $encryptedValue = $line -replace "^$Key=", ""
-        
-        # Decrypt the value
-        $value = Unprotect-Value -EncryptedValue $encryptedValue
-        
-        # Copy to clipboard if not prohibited
-        if (-not $NoCopy) {
-            Set-Clipboard -Value $value
+        # Extract value (everything after the first = and before optional |)
+        if ($line -match "^$Key=(.+?)(?:\|(.+))?$") {
+            $encryptedValue = $Matches[1]
+            $shortcut = $Matches[2]  # Will be $null if no shortcut exists
+            
+            # Decrypt the value
+            $value = Unprotect-Value -EncryptedValue $encryptedValue
+            
+            # Copy to clipboard if not prohibited
+            if (-not $NoCopy) {
+                Set-Clipboard -Value $value
+            }
+            
+            # Show value if requested
+            if ($Show) {
+                Write-Output "$value"
+            }
+            
+            if (-not $Show) {
+                Write-Output "Value for '$Key' copied to clipboard."
+            }
+            
+            # Run shortcut if it exists
+            if ($shortcut -and -not $NoCopy) {
+                try {
+                    Write-Verbose "Running shortcut: $shortcut"
+                    Start-Process -FilePath $shortcut
+                }
+                catch {
+                    Write-Warning "Failed to run shortcut: $shortcut. Error: $_"
+                }
+            }
         }
-        
-        # Show value if requested
-        if ($Show) {
-            Write-Output "$value"
-        }
-        
-        if (-not $Show) {
-            Write-Output "Value for '$Key' copied to clipboard."
+        else {
+            # Extract value using the old format (just in case)
+            $encryptedValue = $line -replace "^$Key=", ""
+            
+            # Decrypt the value
+            $value = Unprotect-Value -EncryptedValue $encryptedValue
+            
+            # Copy to clipboard if not prohibited
+            if (-not $NoCopy) {
+                Set-Clipboard -Value $value
+            }
+            
+            # Show value if requested
+            if ($Show) {
+                Write-Output "$value"
+            }
+            
+            if (-not $Show) {
+                Write-Output "Value for '$Key' copied to clipboard."
+            }
         }
     }
     else {
@@ -201,10 +236,12 @@ function Set-Lookup {
         The key to set
     .PARAMETER Value
         The value to store
+    .PARAMETER Shortcut
+        Optional path to a shortcut or executable to run after copying the value
     .EXAMPLE
         Set-Lookup -Key "newkey" -Value "new value to store"
     .EXAMPLE
-        dbset newkey "new value to store"
+        dbset newkey "new value to store" "C:\path\to\app.exe"
     #>
     [CmdletBinding()]
     [Alias("dbset")]
@@ -213,7 +250,10 @@ function Set-Lookup {
         [string]$Key,
         
         [Parameter(Mandatory = $true, Position = 1)]
-        [string]$Value
+        [string]$Value,
+        
+        [Parameter(Mandatory = $false, Position = 2)]
+        [string]$Shortcut
     )
     
     # Create the file if it doesn't exist
@@ -238,7 +278,12 @@ function Set-Lookup {
     foreach ($line in $content) {
         if ($line -match "^$Key=") {
             # Replace existing key
-            $newContent += "$Key=$encryptedValue"
+            if ($Shortcut) {
+                $newContent += "$Key=$encryptedValue|$Shortcut"
+            }
+            else {
+                $newContent += "$Key=$encryptedValue"
+            }
             $keyExists = $true
         }
         else {
@@ -249,13 +294,23 @@ function Set-Lookup {
     
     # Add new key if it doesn't exist
     if (-not $keyExists) {
-        $newContent += "$Key=$encryptedValue"
+        if ($Shortcut) {
+            $newContent += "$Key=$encryptedValue|$Shortcut"
+        }
+        else {
+            $newContent += "$Key=$encryptedValue"
+        }
     }
     
     # Write back to file
     Set-Content -Path $Script:DbPath -Value $newContent
     
-    Write-Output "Key '$Key' has been set successfully."
+    if ($Shortcut) {
+        Write-Output "Key '$Key' has been set successfully with shortcut: $Shortcut"
+    }
+    else {
+        Write-Output "Key '$Key' has been set successfully."
+    }
 }
 
 function Remove-Lookup {
@@ -323,16 +378,21 @@ function Show-AllLookups {
         Displays a list of all keys stored in the database
     .PARAMETER IncludeValues
         If specified, shows values alongside keys
+    .PARAMETER IncludeShortcuts
+        If specified, shows shortcuts alongside keys and values
     .EXAMPLE
         Show-AllLookups
     .EXAMPLE
-        dbshow -IncludeValues
+        dbshow -IncludeValues -IncludeShortcuts
     #>
     [CmdletBinding()]
     [Alias("dbshow")]
     param (
         [Parameter()]
-        [switch]$IncludeValues
+        [switch]$IncludeValues,
+        
+        [Parameter()]
+        [switch]$IncludeShortcuts
     )
     
     # Ensure database file exists
@@ -352,11 +412,35 @@ function Show-AllLookups {
     Write-Output "Available keys in database:"
     
     if ($IncludeValues) {
-        # Show keys with values
+        # Show keys with values and optionally shortcuts
         foreach ($line in $content) {
-            if ($line -match "^(.+?)=(.*)$") {
+            if ($line -match "^(.+?)=(.+?)(?:\|(.+))?$") {
                 $key = $Matches[1]
                 $encryptedValue = $Matches[2]
+                $shortcut = $Matches[3]  # Will be $null if no shortcut exists
+                
+                # Decrypt the value for display
+                $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
+                
+                if ($IncludeShortcuts -and $shortcut) {
+                    [PSCustomObject]@{
+                        Key      = $key
+                        Value    = $decryptedValue
+                        Shortcut = $shortcut
+                    }
+                }
+                else {
+                    [PSCustomObject]@{
+                        Key   = $key
+                        Value = $decryptedValue
+                    }
+                }
+            }
+            # Handle the old format without shortcut
+            elseif ($line -match "^(.+?)=(.+)$") {
+                $key = $Matches[1]
+                $encryptedValue = $Matches[2]
+                
                 # Decrypt the value for display
                 $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
                 
@@ -506,7 +590,20 @@ function Export-LookupData {
         $output += ""
         
         foreach ($line in $content) {
-            if ($line -match "^(.+?)=(.*)$") {
+            if ($line -match "^(.+?)=(.+?)\|(.+)$") {
+                $key = $Matches[1]
+                $encryptedValue = $Matches[2]
+                $shortcut = $Matches[3]
+                
+                # Decrypt the value
+                $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
+                # Escape any quotes in the value
+                $escapedValue = $decryptedValue -replace '"', '`"'
+                $escapedShortcut = $shortcut -replace '"', '`"'
+                # Add the command to set this value with shortcut
+                $output += "Set-Lookup -Key `"$key`" -Value `"$escapedValue`" -Shortcut `"$escapedShortcut`""
+            }
+            elseif ($line -match "^(.+?)=(.+)$") {
                 $key = $Matches[1]
                 $encryptedValue = $Matches[2]
                 # Decrypt the value
@@ -536,9 +633,20 @@ function Export-LookupData {
         $output += ""
         
         foreach ($line in $content) {
-            if ($line -match "^(.+?)=(.*)$") {
+            if ($line -match "^(.+?)=(.+?)\|(.+)$") {
                 $key = $Matches[1]
                 $encryptedValue = $Matches[2]
+                $shortcut = $Matches[3]
+                
+                # Decrypt the value
+                $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
+                # Add the plain key=value|shortcut format
+                $output += "$key=$decryptedValue|$shortcut"
+            }
+            elseif ($line -match "^(.+?)=(.+)$") {
+                $key = $Matches[1]
+                $encryptedValue = $Matches[2]
+                
                 # Decrypt the value
                 $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
                 # Add the plain key=value pair
@@ -571,6 +679,8 @@ function Get-Need {
         The key to look up or set
     .PARAMETER Value
         If provided, sets this value for the specified key
+    .PARAMETER Shortcut
+        Optional path to a shortcut or executable to run after copying the value
     .PARAMETER NoCopy
         If specified, doesn't copy to clipboard when retrieving
     .PARAMETER Show
@@ -581,6 +691,9 @@ function Get-Need {
     .EXAMPLE
         Need iban "CH132154646" 
         # Sets the IBAN value
+    .EXAMPLE
+        Need iban "CH132154646" "C:\path\to\bank.exe"
+        # Sets the IBAN value with a shortcut to the banking app
     .EXAMPLE
         Need iban -Show
         # Shows the IBAN and copies it to clipboard
@@ -593,6 +706,9 @@ function Get-Need {
         
         [Parameter(Mandatory = $false, Position = 1, ParameterSetName = 'Set')]
         [string]$Value,
+        
+        [Parameter(Mandatory = $false, Position = 2, ParameterSetName = 'Set')]
+        [string]$Shortcut,
         
         [Parameter(ParameterSetName = 'Get')]
         [switch]$NoCopy,
@@ -625,7 +741,12 @@ function Get-Need {
         foreach ($line in $content) {
             if ($line -match "^$Key=") {
                 # Replace existing key
-                $newContent += "$Key=$encryptedValue"
+                if ($Shortcut) {
+                    $newContent += "$Key=$encryptedValue|$Shortcut"
+                }
+                else {
+                    $newContent += "$Key=$encryptedValue"
+                }
                 $keyExists = $true
             }
             else {
@@ -636,52 +757,28 @@ function Get-Need {
         
         # Add new key if it doesn't exist
         if (-not $keyExists) {
-            $newContent += "$Key=$encryptedValue"
+            if ($Shortcut) {
+                $newContent += "$Key=$encryptedValue|$Shortcut"
+            }
+            else {
+                $newContent += "$Key=$encryptedValue"
+            }
         }
         
         # Write back to file
         Set-Content -Path $Script:DbPath -Value $newContent
         
-        Write-Output "Key '$Key' has been set successfully."
+        if ($Shortcut) {
+            Write-Output "Key '$Key' has been set successfully with shortcut: $Shortcut"
+        }
+        else {
+            Write-Output "Key '$Key' has been set successfully."
+        }
     }
     else {
         # We're retrieving a value (Get parameter set)
-        # Ensure database file exists
-        if (-not (Test-Path -Path $Script:DbPath)) {
-            Write-Error "Database file not found at $Script:DbPath"
-            return
-        }
-        
-        # Read all lines from the file
-        $content = Get-Content -Path $Script:DbPath
-        
-        # Find the line with the key
-        $line = $content | Where-Object { $_ -match "^$Key=" }
-        
-        if ($line) {
-            # Extract value (everything after the first =)
-            $encryptedValue = $line -replace "^$Key=", ""
-            
-            # Decrypt the value
-            $value = Unprotect-Value -EncryptedValue $encryptedValue
-            
-            # Copy to clipboard if not prohibited
-            if (-not $NoCopy) {
-                Set-Clipboard -Value $value
-            }
-            
-            # Show value if requested
-            if ($Show) {
-                Write-Output "$value"
-            }
-            
-            if (-not $Show) {
-                Write-Output "Value for '$Key' copied to clipboard."
-            }
-        }
-        else {
-            Write-Error "Key '$Key' not found in the database."
-        }
+        # Use the existing Get-Lookup function
+        Get-Lookup -Key $Key -NoCopy:$NoCopy -Show:$Show
     }
 }
 
