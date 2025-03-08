@@ -377,95 +377,6 @@ function Show-AllLookups {
     }
 }
 
-function Import-LookupData {
-    <#
-    .SYNOPSIS
-        Imports data from a file into the lookup database
-    .DESCRIPTION
-        Imports key=value pairs from a specified file into the database
-    .PARAMETER Path
-        Path to the file to import
-    .PARAMETER Overwrite
-        If specified, overwrites existing keys with imported values
-    .EXAMPLE
-        Import-LookupData -Path "C:\temp\newdata.txt"
-    #>
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-        
-        [Parameter()]
-        [switch]$Overwrite
-    )
-    
-    # Ensure import file exists
-    if (-not (Test-Path -Path $Path)) {
-        Write-Error "Import file not found at $Path"
-        return
-    }
-    
-    # Read import file
-    $importContent = Get-Content -Path $Path
-    
-    # Read existing database
-    $existingContent = @()
-    if (Test-Path -Path $Script:DbPath) {
-        $existingContent = Get-Content -Path $Script:DbPath
-    }
-    else {
-        New-Item -Path $Script:DbPath -ItemType File -Force | Out-Null
-    }
-    
-    # Process import
-    $addedCount = 0
-    $skippedCount = 0
-    $replacedCount = 0
-    
-    foreach ($line in $importContent) {
-        if ($line -match "^(.+?)=(.*)$") {
-            $key = $Matches[1]
-            $value = $Matches[2]
-            
-            # Encrypt the value
-            $encryptedValue = Protect-Value -Value $value
-            
-            # Check if key exists
-            $existingLine = $existingContent | Where-Object { $_ -match "^$key=" }
-            
-            if ($existingLine) {
-                if ($Overwrite) {
-                    if ($PSCmdlet.ShouldProcess("Key '$key'", "Replace")) {
-                        # Replace existing key
-                        $existingContent = $existingContent | ForEach-Object {
-                            if ($_ -match "^$key=") {
-                                "$key=$encryptedValue"
-                            }
-                            else {
-                                $_
-                            }
-                        }
-                        $replacedCount++
-                    }
-                }
-                else {
-                    $skippedCount++
-                }
-            }
-            else {
-                # Add new key
-                $existingContent += "$key=$encryptedValue"
-                $addedCount++
-            }
-        }
-    }
-    
-    # Write back to database
-    Set-Content -Path $Script:DbPath -Value $existingContent
-    
-    Write-Output "Import complete: $addedCount added, $replacedCount replaced, $skippedCount skipped."
-}
-
 function Set-LookupDbPath {
     <#
     .SYNOPSIS
@@ -661,4 +572,4 @@ function Get-Need {
 
 # Export module members
 Export-ModuleMember -Function Get-Lookup, Set-Lookup, Remove-Lookup, Show-AllLookups, 
-Import-LookupData, Set-LookupDbPath, Get-LookupDbPath, Get-Need -Alias dbget, dbset, dbremove, dbshow, Need
+Set-LookupDbPath, Get-LookupDbPath, Get-Need -Alias dbget, dbset, dbremove, dbshow, Need

@@ -82,18 +82,6 @@ Show-AllLookups
 dbshow -IncludeValues
 ```
 
-### Import-LookupData
-
-Imports key-value pairs from another file.
-
-```powershell
-# Import without overwriting existing keys
-Import-LookupData -Path "C:\temp\additional_data.txt"
-
-# Import and overwrite any existing keys
-Import-LookupData -Path "C:\temp\updated_data.txt" -Overwrite
-```
-
 ### Set-LookupDbPath
 
 Changes the location of the database file.
@@ -126,20 +114,30 @@ $HOME\Documents\PersonalLookup_config.json
 
 ## Data Format
 
-Data is stored in a simple text file with key=value format:
+Data is stored in a simple text file with key=encrypted value format:
 
 ```
-key1=value1
-key2=value2
-phone=555-123-4567
+key1=01000000d08c9ddf0115d1118c7a00c04fc297eb01000000bd5facf59ce5274499d21cf812e8b486000000000200000000001066486000006
+key2=01000000d08c9ddf0115d1118c7a00c04fc297eb01000000bd5facf59ce5274499d21cf812e8b486000000000200000000001066000100002000044555
+phone=01000000d08c9ddf0115d1118c7a00c04fc297eb01000000bd5facf59ce5274499d21cf812e8b48600000000020000000000106600000001000020000
 ```
 
-## Tips
+## Security
 
-- Use short, memorable keys for frequently accessed items
-- For sensitive information, consider changing the database path to a more secure location
-- Create a PowerShell profile entry to set your preferred database path at startup
+### Encryption Details
 
-```
+This module automatically encrypts all stored values using Windows Data Protection API (DPAPI). Here's what this means for you:
 
-```
+- **User-Specific Encryption**: Values are encrypted with your Windows user account credentials. Only your Windows user account can decrypt the data.
+- **Machine-Bound**: The encrypted data is tied to the specific computer where it was created. It cannot be decrypted on another computer, even with the same user account.
+- **No Passwords Required**: You don't need to enter or remember any additional passwords to secure your data.
+- **Transparent Usage**: Encryption and decryption happen automatically when you store or retrieve values.
+
+### Security Considerations
+
+- If someone gains access to your Windows user account, they can access your stored values.
+- The module stores data in a plain text file, but all sensitive values are encrypted - only the keys are readable.
+- Backing up your database requires copying the file to another location. Remember that the encrypted values can only be decrypted on the original computer with your user account.
+- If you need to transfer your database to another computer, you'll need to re-encrypt the values on the new machine.
+
+For most personal use, this level of security provides good protection for sensitive information like account numbers, IDs, and other personal data you want quick access to without storing in plain text.
