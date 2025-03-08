@@ -445,6 +445,121 @@ function Get-LookupDbPath {
     }
 }
 
+function Export-LookupData {
+    <#
+    .SYNOPSIS
+        Exports the lookup database in a format that can be transferred to another computer
+    .DESCRIPTION
+        Decrypts all values and exports them to a plain text file that can be
+        imported on another computer using Set-Lookup commands
+    .PARAMETER Path
+        Path where to save the exported file
+    .PARAMETER AsCommands
+        If specified, exports as PowerShell commands ready to run (recommended for security)
+    .PARAMETER AsPlainText
+        If specified, exports as plain text key=value pairs (less secure)
+    .EXAMPLE
+        Export-LookupData -Path "C:\temp\export.ps1" -AsCommands
+        # Exports as runnable PowerShell commands
+    .EXAMPLE
+        Export-LookupData -Path "C:\temp\export.txt" -AsPlainText
+        # Exports as plain text (less secure)
+    #>
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        
+        [Parameter(ParameterSetName = 'Commands')]
+        [switch]$AsCommands,
+        
+        [Parameter(ParameterSetName = 'PlainText')]
+        [switch]$AsPlainText
+    )
+    
+    # Ensure database file exists
+    if (-not (Test-Path -Path $Script:DbPath)) {
+        Write-Error "Database file not found at $Script:DbPath"
+        return
+    }
+    
+    # Read all lines from the file
+    $content = Get-Content -Path $Script:DbPath
+    
+    if (-not $content -or $content.Count -eq 0) {
+        Write-Error "The database is empty. Nothing to export."
+        return
+    }
+    
+    # Default to AsCommands if neither is specified
+    if (-not $AsCommands -and -not $AsPlainText) {
+        $AsCommands = $true
+    }
+    
+    # Process file based on export type
+    if ($AsCommands) {
+        # Export as PowerShell commands
+        $output = @()
+        $output += "# PersonalLookup export file"
+        $output += "# Generated on $(Get-Date)"
+        $output += "# Import by running this file or copy-pasting these commands"
+        $output += ""
+        
+        foreach ($line in $content) {
+            if ($line -match "^(.+?)=(.*)$") {
+                $key = $Matches[1]
+                $encryptedValue = $Matches[2]
+                # Decrypt the value
+                $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
+                # Escape any quotes in the value
+                $escapedValue = $decryptedValue -replace '"', '`"'
+                # Add the command to set this value
+                $output += "Set-Lookup -Key `"$key`" -Value `"$escapedValue`""
+            }
+        }
+        
+        if ($PSCmdlet.ShouldProcess("PowerShell commands to $Path", "Export")) {
+            $output | Set-Content -Path $Path
+            Write-Output "Exported $($content.Count) items as PowerShell commands to $Path"
+            Write-Output "To import on the new machine:"
+            Write-Output "1. Install the PersonalLookup module"
+            Write-Output "2. Run the exported script: . '$Path'"
+        }
+    }
+    elseif ($AsPlainText) {
+        # Export as plain text (less secure)
+        $output = @()
+        $output += "# PersonalLookup export file - PLAIN TEXT - SENSITIVE INFORMATION"
+        $output += "# Generated on $(Get-Date)"
+        $output += "# WARNING: This file contains decrypted values in plain text!"
+        $output += "# Import using: Import-LookupData -Path '$Path' -Overwrite"
+        $output += ""
+        
+        foreach ($line in $content) {
+            if ($line -match "^(.+?)=(.*)$") {
+                $key = $Matches[1]
+                $encryptedValue = $Matches[2]
+                # Decrypt the value
+                $decryptedValue = Unprotect-Value -EncryptedValue $encryptedValue
+                # Add the plain key=value pair
+                $output += "$key=$decryptedValue"
+            }
+        }
+        
+        # Warn user about security implications
+        Write-Warning "You are about to export sensitive data in PLAIN TEXT format."
+        Write-Warning "This file will NOT be encrypted and could expose sensitive information."
+        
+        if ($PSCmdlet.ShouldProcess("plain text key-value pairs to $Path", "Export")) {
+            $output | Set-Content -Path $Path
+            Write-Output "Exported $($content.Count) items as plain text to $Path"
+            Write-Output "To import on the new machine:"
+            Write-Output "1. Install the PersonalLookup module"
+            Write-Output "2. Run: Import-LookupData -Path '$Path' -Overwrite"
+        }
+    }
+}
+
 function Get-Need {
     <#
     .SYNOPSIS
@@ -572,4 +687,4 @@ function Get-Need {
 
 # Export module members
 Export-ModuleMember -Function Get-Lookup, Set-Lookup, Remove-Lookup, Show-AllLookups, 
-Set-LookupDbPath, Get-LookupDbPath, Get-Need -Alias dbget, dbset, dbremove, dbshow, Need
+Set-LookupDbPath, Get-LookupDbPath, Export-LookupData, Get-Need -Alias dbget, dbset, dbremove, dbshow, Need

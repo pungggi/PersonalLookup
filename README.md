@@ -82,6 +82,18 @@ Show-AllLookups
 dbshow -IncludeValues
 ```
 
+### Export-LookupData
+
+Exports the database in a format that can be transferred to another computer.
+
+```powershell
+# Export as PowerShell commands (recommended)
+Export-LookupData -Path "C:\temp\mylookup_export.ps1" -AsCommands
+
+# Export as plain text (less secure)
+Export-LookupData -Path "C:\temp\mylookup_export.txt" -AsPlainText
+```
+
 ### Set-LookupDbPath
 
 Changes the location of the database file.
@@ -139,5 +151,23 @@ This module automatically encrypts all stored values using Windows Data Protecti
 - The module stores data in a plain text file, but all sensitive values are encrypted - only the keys are readable.
 - Backing up your database requires copying the file to another location. Remember that the encrypted values can only be decrypted on the original computer with your user account.
 - If you need to transfer your database to another computer, you'll need to re-encrypt the values on the new machine.
+
+### Transferring to Another Computer
+
+Since the encryption is machine and user specific, you need to export the data before transferring:
+
+1. Use `Export-LookupData` to create an export file:
+
+   ```powershell
+   Export-LookupData -Path "C:\path\to\export.ps1" -AsCommands
+   ```
+
+2. On the new computer, after installing the module:
+   ```powershell
+   # Run the exported script
+   . "C:\path\to\export.ps1"
+   ```
+
+This process will decrypt the values on the original machine and re-encrypt them on the new machine.
 
 For most personal use, this level of security provides good protection for sensitive information like account numbers, IDs, and other personal data you want quick access to without storing in plain text.
