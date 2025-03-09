@@ -201,16 +201,7 @@ function Get-Lookup {
             if ($Show) {
                 Write-Output "$value"
             }
-            
-            if (-not $Show) {
-                if (-not $NoAutoClipboardClear -and -not $NoCopy) {
-                    Write-Output "Value for '$Key' copied to clipboard. Will be cleared in 70 seconds."
-                }
-                else {
-                    Write-Output "Value for '$Key' copied to clipboard."
-                }
-            }
-            
+                        
             # Run shortcut if it exists
             if ($shortcut -and -not $NoCopy) {
                 try {
@@ -221,6 +212,7 @@ function Get-Lookup {
                     Write-Warning "Failed to run shortcut: $shortcut. Error: $_"
                 }
             }
+            exit
         }
         else {
             # Extract value using the old format (just in case)
@@ -251,14 +243,8 @@ function Get-Lookup {
             if ($Show) {
                 Write-Output "$value"
             }
-            
-            if (-not $Show) {
-                if (-not $NoAutoClipboardClear -and -not $NoCopy) {
-                    Write-Output "Value for '$Key' copied to clipboard. Will be cleared in 70 seconds."
-                }
-                else {
-                    Write-Output "Value for '$Key' copied to clipboard."
-                }
+            else {
+                exit
             }
         }
     }
