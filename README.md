@@ -232,8 +232,7 @@ To publish this module to the PowerShell Gallery, follow these steps:
 
 ### Prepare Your Module
 
-1. Update the module version in the `.psd1` file for each new release
-2. Make sure all required fields are completed in your module manifest:
+1. Make sure all required fields are completed in your module manifest:
    - ModuleVersion
    - Author
    - Description
@@ -241,7 +240,7 @@ To publish this module to the PowerShell Gallery, follow these steps:
    - FunctionsToExport
    - Tags (for discoverability)
 
-### Publish the Module
+### Publish the Module with Automatic Version Increment
 
 ```powershell
 # Register your API key (only needed once per machine)
@@ -250,16 +249,45 @@ Register-PSRepository -Default
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 $null = Get-PSRepository -Name PSGallery
 
-# Publish your module
-Publish-Module -Path "C:\Users\Alessandro\Documents\PowerShell\Modules\PersonalLookup" -NuGetApiKey $apiKey -Verbose
+# Path to your module's psd1 file
+$manifestPath = "C:\Users\Alessandro\Documents\PowerShell\Modules\PersonalLookup\PersonalLookup.psd1"
+$modulePath = "C:\Users\Alessandro\Documents\PowerShell\Modules\PersonalLookup"
 
-# For subsequent updates, just update the version in the .psd1 file and run the publish command again
+# Increment version (specify: Major, Minor, or Patch)
+$versionType = "Patch" # Change to "Major" or "Minor" as needed
+
+# Read the current module manifest
+$manifest = Import-PowerShellDataFile -Path $manifestPath
+$currentVersion = [Version]$manifest.ModuleVersion
+
+# Calculate new version based on increment type
+switch ($versionType) {
+    "Major" { $newVersion = [Version]::new($currentVersion.Major + 1, 0, 0) }
+    "Minor" { $newVersion = [Version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0) }
+    "Patch" { $newVersion = [Version]::new($currentVersion.Major, $currentVersion.Minor, $currentVersion.Build + 1) }
+}
+
+# Update the module manifest with new version
+Update-ModuleManifest -Path $manifestPath -ModuleVersion $newVersion
+
+Write-Host "Module version updated from $currentVersion to $newVersion"
+
+# Publish your module with the new version
+Publish-Module -Path $modulePath -NuGetApiKey $apiKey -Verbose
 ```
 
 ### Updating the Module
 
-1. Increment the `ModuleVersion` in the `.psd1` file
-2. Run the `Publish-Module` command again with the same path and API key
-3. Users can update using: `Update-Module -Name PersonalLookup`
+Run the script above for each new release, changing the `$versionType` parameter as needed:
+
+- `Major` for significant changes that may break compatibility (1.0.0 → 2.0.0)
+- `Minor` for new features that maintain compatibility (1.0.0 → 1.1.0)
+- `Patch` for bug fixes and minor updates (1.0.0 → 1.0.1)
+
+Users can update using:
+
+```powershell
+Update-Module -Name PersonalLookup
+```
 
 For more information, see the [PowerShell Gallery documentation](https://docs.microsoft.com/en-us/powershell/scripting/gallery/overview).
