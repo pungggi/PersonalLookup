@@ -18,6 +18,41 @@ This module was created as a PowerShell replacement for the "Need" plugin for [W
 - **Launch associated applications automatically with shortcuts**
 - **Auto-clearing clipboard security (clears sensitive data after 70 seconds)**
 
+## Installation
+
+### Option 1: Installing from PowerShell Gallery (Recommended)
+
+```powershell
+Install-Module -Name PersonalLookup -Scope CurrentUser
+```
+
+### Option 2: Manual Installation
+
+1. Download or clone this repository
+2. Place the entire folder in one of your PowerShell module paths:
+   ```powershell
+   # View your PSModulePath locations
+   $env:PSModulePath -split ';'
+   ```
+3. The recommended location is:
+   ```
+   $HOME\Documents\PowerShell\Modules\PersonalLookup
+   ```
+4. Import the module:
+   ```powershell
+   Import-Module PersonalLookup
+   ```
+
+To automatically load the module in all PowerShell sessions, add the Import-Module command to your PowerShell profile:
+
+```powershell
+# Open your profile for editing
+notepad $PROFILE
+
+# Add this line
+Import-Module PersonalLookup
+```
+
 ## Commands
 
 ### Get-Need (alias: Need)
@@ -119,10 +154,6 @@ Changes the location of the database file.
 Set-LookupDbPath -Path "C:\Users\Jay\OneDrive\secure\db.txt"
 ```
 
-### Get-LookupDbPath
-
-Displays the current database path and configuration status.
-
 ```powershell
 Get-LookupDbPath
 ```
@@ -188,3 +219,47 @@ Since the encryption is machine and user specific, you need to export the data b
 This process will decrypt the values on the original machine and re-encrypt them on the new machine.
 
 For most personal use, this level of security provides good protection for sensitive information like account numbers, IDs, and other personal data you want quick access to without storing in plain text.
+
+## Publishing to PowerShell Gallery
+
+To publish this module to the PowerShell Gallery, follow these steps:
+
+### Prerequisites
+
+1. Create a PowerShell Gallery account at [PowerShellGallery.com](https://www.powershellgallery.com/)
+2. Get an API key from your PowerShell Gallery account settings
+3. Ensure your module has a proper module manifest (`.psd1` file) with version information
+
+### Prepare Your Module
+
+1. Update the module version in the `.psd1` file for each new release
+2. Make sure all required fields are completed in your module manifest:
+   - ModuleVersion
+   - Author
+   - Description
+   - PowerShellVersion (minimum version required)
+   - FunctionsToExport
+   - Tags (for discoverability)
+
+### Publish the Module
+
+```powershell
+# Register your API key (only needed once per machine)
+$apiKey = "your-api-key-from-powershellgallery"
+Register-PSRepository -Default
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+$null = Get-PSRepository -Name PSGallery
+
+# Publish your module
+Publish-Module -Path "C:\Users\Alessandro\Documents\PowerShell\Modules\PersonalLookup" -NuGetApiKey $apiKey -Verbose
+
+# For subsequent updates, just update the version in the .psd1 file and run the publish command again
+```
+
+### Updating the Module
+
+1. Increment the `ModuleVersion` in the `.psd1` file
+2. Run the `Publish-Module` command again with the same path and API key
+3. Users can update using: `Update-Module -Name PersonalLookup`
+
+For more information, see the [PowerShell Gallery documentation](https://docs.microsoft.com/en-us/powershell/scripting/gallery/overview).
