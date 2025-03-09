@@ -21,13 +21,13 @@
     GUID              = 'e2858576-6616-42e8-bb9f-fe2b30b9865a'
 
     # Author of this module
-    Author            = 'Alessandro'
+    Author            = 'ngSoftware'
 
     # Company or vendor of this module
     CompanyName       = 'Unknown'
 
     # Copyright statement for this module
-    Copyright         = '(c) Alessandro. All rights reserved.'
+    Copyright         = 'Public domain. This module may be freely used and modified by anyone.'
 
     # Description of the functionality provided by this module
     Description       = 'Personal lookup module for quick access to stored key-value pairs'
